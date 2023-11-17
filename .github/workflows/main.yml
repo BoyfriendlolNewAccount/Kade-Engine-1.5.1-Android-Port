@@ -55,8 +55,10 @@ jobs:
           haxelib install flixel-ui
           haxelib install hscript
           haxelib install flixel-addons
-          haxelib git linc_luajit https://github.com/jigsaw-4277821/linc_luajit.git --quiet 
-          haxelib git extension-webm https://github.com/Sirox228/extension-webm
+          haxelib --quiet git hxCodec https://github.com/SPLCoding/hxCodec-but-it-works-xd.git
+          haxelib --quiet git linc_luajit https://github.com/Sirox228/linc_luajit.git
+          haxelib --quiet git extension-androidtools https://github.com/MaysLastPlay77/extension-androidtools
+          haxelib list
           haxelib install actuate
           haxelib list
 
