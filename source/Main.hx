@@ -1,9 +1,6 @@
 package;
 
-import openfl.display.BlendMode;
-import openfl.text.TextFormat;
-import openfl.display.Application;
-import flixel.util.FlxColor;
+import flixel.graphics.FlxGraphic;
 import flixel.FlxG;
 import flixel.FlxGame;
 import flixel.FlxState;
@@ -12,7 +9,21 @@ import openfl.Lib;
 import openfl.display.FPS;
 import openfl.display.Sprite;
 import openfl.events.Event;
-import lime.system.System;
+import openfl.display.StageScaleMode;
+
+//crash handler stuff
+#if CRASH_HANDLER
+import lime.app.Application;
+import openfl.events.UncaughtErrorEvent;
+import haxe.CallStack;
+import haxe.io.Path;
+import Discord.DiscordClient;
+import sys.FileSystem;
+import sys.io.File;
+import sys.io.Process;
+#end
+
+using StringTools;
 
 class Main extends Sprite
 {
@@ -23,18 +34,12 @@ class Main extends Sprite
 	var framerate:Int = 60; // How many frames per second the game should run at.
 	var skipSplash:Bool = true; // Whether to skip the flixel splash screen that appears in release mode.
 	var startFullscreen:Bool = false; // Whether to start the game in fullscreen on desktop targets
-
-	public static var watermarks = true; // Whether to put Kade Engine liteartly anywhere
+	public static var fpsVar:FPS;
 
 	// You can pretty much ignore everything from here on - your code should go in your states.
-	
-	public static var path:String = System.applicationStorageDirectory;
 
 	public static function main():Void
 	{
-
-		// quick checks 
-
 		Lib.current.addChild(new Main());
 	}
 
@@ -75,45 +80,73 @@ class Main extends Sprite
 			gameWidth = Math.ceil(stageWidth / zoom);
 			gameHeight = Math.ceil(stageHeight / zoom);
 		}
+	
+		SUtil.check();
+	
+		ClientPrefs.loadDefaultKeys();
+		addChild(new FlxGame(gameWidth, gameHeight, initialState, #if (flixel < "5.0.0") zoom, #end framerate, framerate, skipSplash, startFullscreen));
 
-		#if !debug
-		initialState = TitleState;
+		fpsVar = new FPS(10, 3, 0xFFFFFF);
+		addChild(fpsVar);
+		Lib.current.stage.align = "tl";
+		Lib.current.stage.scaleMode = StageScaleMode.NO_SCALE;
+		if(fpsVar != null) {
+			fpsVar.visible = ClientPrefs.showFPS;
+		}
+
+		FlxG.autoPause = false;
+
+		#if html5
+		FlxG.mouse.visible = false;
 		#end
-
-		game = new FlxGame(gameWidth, gameHeight, initialState, zoom, framerate, framerate, skipSplash, startFullscreen);
-
-		addChild(game);
-
-		fpsCounter = new FPS(10, 3, 0xFFFFFF);
-		addChild(fpsCounter);
-		toggleFPS(FlxG.save.data.fps);
+		
+		#if CRASH_HANDLER
+		Lib.current.loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, onCrash);
+		#end
 	}
 
-	var game:FlxGame;
-
-	var fpsCounter:FPS;
-
-	public function toggleFPS(fpsEnabled:Bool):Void {
-		fpsCounter.visible = fpsEnabled;
-	}
-
-	public function changeFPSColor(color:FlxColor)
+	// Code was entirely made by sqirra-rng for their fnf engine named "Izzy Engine", big props to them!!!
+	// very cool person for real they don't get enough credit for their work
+	/*
+		KSKLDFJSLKFJERNWMRN KILL ME SOMEONE IT CAUSES 999999999999999999999 CRASHES FJSDHFKJQEBRMNDBF
+	*/
+	#if CRASH_HANDLER
+	function onCrash(e:UncaughtErrorEvent):Void
 	{
-		fpsCounter.textColor = color;
-	}
+		var errMsg:String = "";
+		var path:String;
+		var callStack:Array<StackItem> = CallStack.exceptionStack(true);
+		var dateNow:String = Date.now().toString();
 
-	public function setFPSCap(cap:Float)
-	{
-		openfl.Lib.current.stage.frameRate = cap;
-	}
+		dateNow = dateNow.replace(" ", "_");
+		dateNow = dateNow.replace(":", "'");
 
-	public function getFPSCap():Float
-	{
-		return openfl.Lib.current.stage.frameRate;
-	}
+		path = SUtil.getPath() + "crash/" + "OSEngine_" + dateNow + ".txt";
 
-	public function getFPS():Float
-	{
-		return fpsCounter.currentFPS;
+		for (stackItem in callStack)
+		{
+			switch (stackItem)
+			{
+				case FilePos(s, file, line, column):
+					errMsg += file + " (line " + line + ")\n";
+				default:
+					Sys.println(stackItem);
+			}
+		}
+
+		errMsg += "\nUncaught Error: " + e.error + "\nPlease report this error to the GitHub page: https://github.com/notweuz/FNF-OSEngine\n\n> Crash Handler written by: sqirra-rng";
+
+		if (!FileSystem.exists(SUtil.getPath() + "crash/"))
+			FileSystem.createDirectory(SUtil.getPath() + "crash/");
+
+		File.saveContent(path, errMsg + "\n");
+
+		Sys.println(errMsg);
+		Sys.println("Crash dump saved in " + Path.normalize(path));
+
+		Application.current.window.alert(errMsg, "Error!");
+		DiscordClient.shutdown();
+		Sys.exit(1);
 	}
+	#end
 }
